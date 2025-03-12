@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentic Raffle Wheel</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        #container {
+            position: relative;
+            max-width: 300px;
+            margin: 20px;
+        }
+        #canvas {
+            max-width: 300px;
+            border: 1px solid #ccc;
+            touch-action: none;
+        }
+        #spinButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #spinButton:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #spinButton:hover:not(:disabled) {
+            background-color: #45a049;
+        }
+        #result {
+            font-size: 18px;
+            margin: 10px;
+            text-align: center;
+            display: none;
+        }
+        #instructions {
+            font-size: 18px;
+            text-align: center;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">
+        Spin the wheel once for a chance to win a #TrueSelf worksheet! Screenshot your result and reply to @MarienneShupe on X!
+    </div>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+    </div>
+    <button id="spinButton">Spin the Wheel</button>
+    <div id="result"></div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const spinButton = document.getElementById('spinButton');
+        const resultDiv = document.getElementById('result');
+
+        // Wheel setup
+        canvas.width = 300;
+        canvas.height = 300;
+        const radius = canvas.width / 2;
+        const segments = [
+            { text: 'Win!', color: '#FFD700' }, // Gold for winner
+            { text: 'Try Again', color: '#FF6347' },
+            { text: 'Try Again', color: '#FF6347' },
+            { text: 'Try Again', color: '#FF6347' }
+        ];
+        const segmentAngle = (2 * Math.PI) / segments.length;
+        let currentAngle = 0;
+        let spinning = false;
+        let hasSpun = localStorage.getItem('hasSpun') === 'true'; // Persist across refreshes
+
+        // Load background image (optional, comment out if not using)
+        const img = new Image();
+        img.src = 'background.png'; // 1080x1920 px image in your repo
+        let imageLoaded = false;
+
+        img.onload = () => {
+            imageLoaded = true;
+            drawWheel();
+        };
+        img.onerror = () => {
+            console.log('Image failed to load');
+            drawWheel();
+        };
+
+        // Draw the wheel
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Optional: Draw background image scaled to canvas (uncomment if using)
+            // if (imageLoaded) {
+            //     const ratio = Math.min(canvas.width / 1080, canvas.height / 1920);
+            //     const scaledWidth = 1080 * ratio;
+            //     const scaledHeight = 1920 * ratio;
+            //     ctx.drawImage(img, (canvas.width - scaledWidth) / 2, (canvas.height - scaledHeight) / 2, scaledWidth, scaledHeight);
+            // }
+
+            // Draw wheel segments
+            for (let i = 0; i < segments.length; i++) {
+                const startAngle = currentAngle + i * segmentAngle;
+                ctx.beginPath();
+                ctx.moveTo(radius, radius);
+                ctx.arc(radius, radius, radius, startAngle, startAngle + segmentAngle);
+                ctx.fillStyle = segments[i].color;
+                ctx.fill();
+                ctx.closePath();
+
+                // Add text
+                ctx.save();
+                ctx.translate(radius, radius);
+                ctx.rotate(startAngle + segmentAngle / 2);
+                ctx.fillStyle = '#000';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(segments[i].text, radius / 2, 5);
+                ctx.restore();
+            }
+
+            // Draw pointer (triangle at top)
+            ctx.beginPath();
+            ctx.moveTo(radius - 10, 10);
+            ctx.lineTo(radius + 10, 10);
+            ctx.lineTo(radius, 30);
+            ctx.fillStyle = '#000';
+            ctx.fill();
+        }
+
+        // Initial draw
+        drawWheel();
+
+        // Spin the wheel
+        function spinWheel() {
+            if (spinning || hasSpun) return;
+            spinning = true;
+            spinButton.disabled = true;
+            let spinTime = 0;
+            const spinDuration = 3000; // 3 seconds
+            const randomSpin = Math.random() * 360 + 720; // 2+ full spins
+
+            function animate() {
+                spinTime += 30;
+                currentAngle += (randomSpin / spinDuration) * 30;
+                currentAngle %= 2 * Math.PI;
+                drawWheel();
+
+                if (spinTime < spinDuration) {
+                    requestAnimationFrame(animate);
+                } else {
+                    spinning = false;
+                    determineResult();
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // Determine and display result
+        function determineResult() {
+            const pointerAngle = Math.PI / 2; // Pointer at top (90 degrees)
+            const adjustedAngle = (2 * Math.PI - currentAngle + pointerAngle) % (2 * Math.PI);
+            const winningSegment = Math.floor(adjustedAngle / segmentAngle);
+            const result = segments[segments.length - 1 - winningSegment].text; // Reverse order for correct alignment
+            resultDiv.textContent = `You got: ${result}`;
+            resultDiv.style.display = 'block';
+            hasSpun = true;
+            localStorage.setItem('hasSpun', 'true');
+            if (result === 'Win!') {
+                resultDiv.style.color = '#FFD700';
+                resultDiv.textContent += ' Reply to @MarienneShupe with your screenshot to claim your #TrueSelf worksheet!';
+            } else {
+                resultDiv.style.color = '#FF6347';
+            }
+        }
+
+        // Disable button if already spun
+        if (hasSpun) {
+            spinButton.disabled = true;
+            resultDiv.textContent = 'You’ve already spun! Check your last result.';
+            resultDiv.style.display = 'block';
+        }
+
+        // Spin on button click
+        spinButton.addEventListener('click', spinWheel);
+    </script>
+</body>
+</html>
