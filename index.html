@@ -49,15 +49,19 @@
             display: none;
         }
         #instructions {
-            font-size: 18px;
+            font-size: 16px;
             text-align: center;
-            max-width: 600px;
+            max-width: 300px;
+            line-height: 1.4;
         }
     </style>
 </head>
 <body>
     <div id="instructions">
-        Spin the wheel once for a chance to win a #TrueSelf worksheet! Screenshot your result and reply to @MarienneShupe on X!
+        Spin the wheel for a chance<br>
+        to win a #TrueSelf worksheet!<br>
+        You get 2 tries—screenshot<br>
+        your result and reply to @MarienneShupe!
     </div>
     <div id="container">
         <canvas id="canvas"></canvas>
@@ -76,41 +80,20 @@
         canvas.height = 300;
         const radius = canvas.width / 2;
         const segments = [
-            { text: 'Win!', color: '#FFD700' }, // Gold for winner
-            { text: 'Try Again', color: '#FF6347' },
-            { text: 'Try Again', color: '#FF6347' },
-            { text: 'Try Again', color: '#FF6347' }
+            { text: 'Win!', color: '#678075' },    // Sage green
+            { text: 'Try Again', color: '#e6de15' }, // Bright yellow
+            { text: 'Try Again', color: '#d1947f' }, // Soft coral
+            { text: 'Try Again', color: '#be9cab' }  // Dusty pink
         ];
         const segmentAngle = (2 * Math.PI) / segments.length;
         let currentAngle = 0;
         let spinning = false;
-        let hasSpun = localStorage.getItem('hasSpun') === 'true'; // Persist across refreshes
-
-        // Load background image (optional, comment out if not using)
-        const img = new Image();
-        img.src = 'background.png'; // 1080x1920 px image in your repo
-        let imageLoaded = false;
-
-        img.onload = () => {
-            imageLoaded = true;
-            drawWheel();
-        };
-        img.onerror = () => {
-            console.log('Image failed to load');
-            drawWheel();
-        };
+        let spinCount = parseInt(localStorage.getItem('spinCount')) || 0;
+        const maxSpins = 2;
 
         // Draw the wheel
         function drawWheel() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Optional: Draw background image scaled to canvas (uncomment if using)
-            // if (imageLoaded) {
-            //     const ratio = Math.min(canvas.width / 1080, canvas.height / 1920);
-            //     const scaledWidth = 1080 * ratio;
-            //     const scaledHeight = 1920 * ratio;
-            //     ctx.drawImage(img, (canvas.width - scaledWidth) / 2, (canvas.height - scaledHeight) / 2, scaledWidth, scaledHeight);
-            // }
 
             // Draw wheel segments
             for (let i = 0; i < segments.length; i++) {
@@ -147,7 +130,7 @@
 
         // Spin the wheel
         function spinWheel() {
-            if (spinning || hasSpun) return;
+            if (spinning || spinCount >= maxSpins) return;
             spinning = true;
             spinButton.disabled = true;
             let spinTime = 0;
@@ -175,24 +158,36 @@
             const pointerAngle = Math.PI / 2; // Pointer at top (90 degrees)
             const adjustedAngle = (2 * Math.PI - currentAngle + pointerAngle) % (2 * Math.PI);
             const winningSegment = Math.floor(adjustedAngle / segmentAngle);
-            const result = segments[segments.length - 1 - winningSegment].text; // Reverse order for correct alignment
-            resultDiv.textContent = `You got: ${result}`;
+            const result = segments[segments.length - 1 - winningSegment].text; // Reverse order for alignment
+            spinCount++;
+            localStorage.setItem('spinCount', spinCount);
+
+            resultDiv.textContent = `Spin ${spinCount}/${maxSpins}: ${result}`;
             resultDiv.style.display = 'block';
-            hasSpun = true;
-            localStorage.setItem('hasSpun', 'true');
+
             if (result === 'Win!') {
-                resultDiv.style.color = '#FFD700';
-                resultDiv.textContent += ' Reply to @MarienneShupe with your screenshot to claim your #TrueSelf worksheet!';
+                resultDiv.style.color = '#678075';
+                resultDiv.textContent += ' Reply to @MarienneShupe with your screenshot to claim!';
             } else {
-                resultDiv.style.color = '#FF6347';
+                resultDiv.style.color = '#d1947f';
+            }
+
+            if (spinCount < maxSpins) {
+                spinButton.disabled = false;
+                resultDiv.textContent += ` (${maxSpins - spinCount} spin${maxSpins - spinCount === 1 ? '' : 's'} left)`;
+            } else {
+                spinButton.disabled = true;
+                resultDiv.textContent += ' No spins left!';
             }
         }
 
-        // Disable button if already spun
-        if (hasSpun) {
+        // Update button state based on spin count
+        if (spinCount >= maxSpins) {
             spinButton.disabled = true;
-            resultDiv.textContent = 'You’ve already spun! Check your last result.';
+            resultDiv.textContent = 'You’ve used both spins! Check your last result.';
             resultDiv.style.display = 'block';
+        } else {
+            spinButton.textContent = `Spin the Wheel (${maxSpins - spinCount} left)`;
         }
 
         // Spin on button click
